@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "candle-lighting-scheduler"
+version = "0.1.0"
+description = ""
+authors = ["Elad Asaf <Elad220@gmail.com>"]
+readme = "README.md"
+packages = [{include = "candle_lighting_scheduler"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+boto3 = "^1.26.93"
+requests = "^2.28.2"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
