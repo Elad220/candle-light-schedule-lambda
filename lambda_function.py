@@ -36,8 +36,8 @@ def get_candle_time():
 def lambda_handler(event, context):
     schedules_list = []
     candle_time = get_candle_time()
-    candle_time_delta_ten = (candle_time - timedelta(minutes=10) - timedelta(hours=2)).time()
-    candle_time_delta_five = (candle_time - timedelta(minutes=5) - timedelta(hours=2)).time()
+    candle_time_delta_ten = (candle_time - timedelta(minutes=10) - timedelta(hours=3)).time()
+    candle_time_delta_five = (candle_time - timedelta(minutes=5) - timedelta(hours=3)).time()
     if candle_time_delta_ten and candle_time_delta_five:
         logging.info("received candle lighting time")
         client = boto3.client('events')
