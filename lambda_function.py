@@ -3,21 +3,14 @@ import requests
 import boto3
 from datetime import datetime, timedelta
 import logging
+import json
 
-BOT_TOKEN = os.environ['BOT_TOKEN']
-BOT_CHATID = os.environ['BOT_CHATID']
 TRIGGER_LAMBDA_NAME = os.environ['TRIGGER_LAMBDA_NAME']
 TRIGGER_LAMBDA_ARN = os.environ['TRIGGER_LAMBDA_ARN']
+EVENTBRIDGE_IAM_ROLE = os.environ['EVENTBRIDGE_IAM_ROLE']
 URL = 'https://www.hebcal.com/shabbat?cfg=json&geonameid=293397&M=on'
 
 logging.basicConfig(level=logging.INFO)
-
-def send_message(message):
-    url = f'https://api.telegram.org/bot{BOT_TOKEN}/sendMessage'
-    params = {'chat_id': BOT_CHATID, 'text': message}
-    response = requests.post(url, data=params)
-    response.raise_for_status()
-    return response.json()
 
 def get_candle_time():
     try:
@@ -29,9 +22,7 @@ def get_candle_time():
                 candle_time = item['date']
                 break
         candle_time = (candle_time.split('+')[0])
-        candle_time_delta_ten = datetime.strptime(candle_time, '%Y-%m-%dT%H:%M:%S') - timedelta(minutes=10)
-        candle_time_delta_five = datetime.strptime(candle_time, '%Y-%m-%dT%H:%M:%S') - timedelta(minutes=5)
-        return candle_time_delta_ten, candle_time_delta_five
+        return datetime.strptime(candle_time, '%Y-%m-%dT%H:%M:%S')
     except requests.exceptions.HTTPError as errh:
         logging.error(f"HTTP Error: {errh}")
     except requests.exceptions.ConnectionError as errc:
@@ -43,35 +34,48 @@ def get_candle_time():
     return None
 
 def lambda_handler(event, context):
-    candle_time_delta_ten, candle_time_delta_five = get_candle_time()
+    schedules_list = []
+    candle_time = get_candle_time()
+    candle_time_delta_ten = (candle_time - timedelta(minutes=10) - timedelta(hours=2)).time()
+    candle_time_delta_five = (candle_time - timedelta(minutes=5) - timedelta(hours=2)).time()
     if candle_time_delta_ten and candle_time_delta_five:
+        logging.info("received candle lighting time")
         client = boto3.client('events')
-        schedule_expression_ten = f'cron({candle_time_delta_ten.minute} {candle_time_delta_ten.hour} ? * fri *)'
-        schedule_expression_five = f'cron({candle_time_delta_five.minute} {candle_time_delta_five.hour} ? * fri *)'
+        schedules_list.append(f'cron({candle_time_delta_ten.minute} {candle_time_delta_ten.hour} ? * fri *)')
+        schedules_list.append(f'cron({candle_time_delta_five.minute} {candle_time_delta_five.hour} ? * fri *)')
 
-        for schedule_expression in [schedule_expression_ten, schedule_expression_five]:
+        for i,schedule_expression in enumerate(schedules_list):
+            logging.info("Creating EventBridge rule {i}")
+            if i == 0:
+                mins = 10
+            else:
+                mins = 5
+
             response = client.put_rule(
-                Name=f'schedule_expression_{schedule_expression}',
+                Name=f'schedule_expression_{i}',
                 ScheduleExpression=schedule_expression,
                 State='ENABLED',
-                Overwrite=True
+                Description=f'EventBridge rule for {TRIGGER_LAMBDA_NAME} lambda function',
+                RoleArn=EVENTBRIDGE_IAM_ROLE
             )
 
             response = client.put_targets(
-                Rule=f'schedule_expression_{schedule_expression}',
+                Rule=f'schedule_expression_{i}',
                 Targets=[
                     {
                         'Id': f"{TRIGGER_LAMBDA_NAME}",
                         'Arn': f'{TRIGGER_LAMBDA_ARN}',
-                        'Input': '{}'
+                        'Input': json.dumps({'candle_time': datetime.isoformat(candle_time), "scheduled_for": mins})
                     }
                 ]
             )
+            logging.info(f"EventBridge rule {i} created successfully!")
 
         return {
             'statusCode': 200,
             'body': 'EventBridge rule created successfully!'
         }
+    
     else:
         logging.error("No candle lighting time found.")
 
