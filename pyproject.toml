@@ -10,7 +10,11 @@ packages = [{include = "candle_lighting_scheduler"}]
 python = "^3.10"
 requests = "^2.28.2"
 boto3 = "^1.26.99"
+pytz = "^2023.3"
 
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.3.0"
 
 [build-system]
 requires = ["poetry-core"]
