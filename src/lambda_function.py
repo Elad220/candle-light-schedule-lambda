@@ -7,7 +7,16 @@ import pytz
 import requests
 from aws_lambda_powertools import Logger
 
-from exceptions import EventBridgeRuleCreationError, EventBridgeTargetCreationError
+class EventBridgeRuleCreationError(Exception):
+    """Exception raised when an error occurs creating an EventBridge rule."""
+
+    pass
+
+
+class EventBridgeTargetCreationError(Exception):
+    """Exception raised when an error occurs creating an EventBridge target."""
+
+    pass
 
 TRIGGER_LAMBDA_NAME = os.environ["TRIGGER_LAMBDA_NAME"]
 TRIGGER_LAMBDA_ARN = os.environ["TRIGGER_LAMBDA_ARN"]
