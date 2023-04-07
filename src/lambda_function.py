@@ -1,10 +1,13 @@
-import os
-import requests
-import boto3
-from datetime import datetime, timedelta
 import json
+import os
+from datetime import datetime, timedelta
+
+import boto3
 import pytz
+import requests
 from aws_lambda_powertools import Logger
+
+from exceptions import EventBridgeRuleCreationError, EventBridgeTargetCreationError
 
 TRIGGER_LAMBDA_NAME = os.environ["TRIGGER_LAMBDA_NAME"]
 TRIGGER_LAMBDA_ARN = os.environ["TRIGGER_LAMBDA_ARN"]
@@ -54,7 +57,7 @@ def lambda_handler(event, context):
         for i, schedule_expression in enumerate(schedules_list):
             logger.info("Creating EventBridge rule {i}")
             if i == 0:
-                    mins = 10
+                mins = 10
             else:
                 mins = 5
 
@@ -65,6 +68,11 @@ def lambda_handler(event, context):
                 Description=f"EventBridge rule for {TRIGGER_LAMBDA_NAME} lambda function",
                 RoleArn=EVENTBRIDGE_IAM_ROLE,
             )
+            if response["ResponseMetadata"]["HTTPStatusCode"] != 200:
+                raise EventBridgeRuleCreationError(
+                    f"Failed to create EventBridge rule {i}. Response: {response}"
+                )
+            logger.info(f"created eventbridge rule {i} for {schedule_expression}")
 
             response = client.put_targets(
                 Rule=f"schedule_expression_{i}",
@@ -81,6 +89,11 @@ def lambda_handler(event, context):
                     }
                 ],
             )
+            if response["ResponseMetadata"]["HTTPStatusCode"] != 200:
+                raise EventBridgeTargetCreationError(
+                    f"Failed to create EventBridge rule {i}. Response: {response}"
+                )
+            logger.info(f"created eventbridge target for rule {i}")
             logger.info(f"EventBridge rule {i} created successfully!")
 
         return {"statusCode": 200, "body": "EventBridge rule created successfully!"}
