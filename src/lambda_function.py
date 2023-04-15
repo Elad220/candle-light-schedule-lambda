@@ -54,7 +54,7 @@ def lambda_handler(event, context):
     candle_time_delta_ten = (candle_time - timedelta(minutes=10)).astimezone(utc).time()
     candle_time_delta_five = (candle_time - timedelta(minutes=5)).astimezone(utc).time()
     if candle_time_delta_ten and candle_time_delta_five:
-        logger.info("received candle lighting time")
+        logger.debug("received candle lighting time")
         client = boto3.client("events")
         schedules_list.append(
             f"cron({candle_time_delta_ten.minute} {candle_time_delta_ten.hour} ? * fri *)"
@@ -64,7 +64,7 @@ def lambda_handler(event, context):
         )
 
         for i, schedule_expression in enumerate(schedules_list):
-            logger.info("Creating EventBridge rule {i}")
+            logger.debug("Creating EventBridge rule {i}")
             if i == 0:
                 mins = 10
             else:
@@ -81,7 +81,7 @@ def lambda_handler(event, context):
                 raise EventBridgeRuleCreationError(
                     f"Failed to create EventBridge rule {i}. Response: {response}"
                 )
-            logger.info(f"created eventbridge rule {i} for {schedule_expression}")
+            logger.debug(f"created eventbridge rule {i} for {schedule_expression}")
 
             response = client.put_targets(
                 Rule=f"schedule_expression_{i}",
@@ -102,7 +102,7 @@ def lambda_handler(event, context):
                 raise EventBridgeTargetCreationError(
                     f"Failed to create EventBridge rule {i}. Response: {response}"
                 )
-            logger.info(f"created eventbridge target for rule {i}")
+            logger.debug(f"created eventbridge target for rule {i}")
             logger.info(f"EventBridge rule {i} created successfully!")
 
         return {"statusCode": 200, "body": "EventBridge rule created successfully!"}
