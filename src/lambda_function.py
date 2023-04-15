@@ -24,7 +24,7 @@ EVENTBRIDGE_IAM_ROLE = os.environ["EVENTBRIDGE_IAM_ROLE"]
 URL = "https://www.hebcal.com/shabbat?cfg=json&geonameid=293397&M=on"
 
 logger = Logger()
-logger.setLevel("DEBUG")
+logger.setLevel(level="DEBUG")
 
 
 def get_candle_time():
